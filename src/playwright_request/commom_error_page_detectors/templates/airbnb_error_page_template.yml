@@ -1,0 +1,7 @@
+robot_detection:
+  xpath: '//p[contains(text(),"You don") and contains(text(),"have permission to access")]'
+  Type: Text
+
+failure_detection:
+  xpath: '//h1[contains(text(),"Oops!")]'
+  Type: Text

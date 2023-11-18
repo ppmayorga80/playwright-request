@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "playwright-request"
+version = "1.0.0"
+authors = [
+  { name="Pedro Mayorga", email="ppmayorga80@gmail.com" },
+]
+description = "Playwright request to make regular request for sites that blocks regular requests like www.amazon.com or www.tripadvisor.com"
+readme = "README.md"
+requires-python = ">=3.7"
+
+dynamic = ["dependencies"]
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[project.scripts]
+#playwright_request = "playwright_request.cli.playwright_request:wrapper_main_fn"

@@ -1,0 +1,2 @@
+#change the filename to .env and remove this line
+PYTHONPATH=$PYTHONPATH:src

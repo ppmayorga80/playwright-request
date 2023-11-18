@@ -1,0 +1,128 @@
+name: "Bump Version"
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  get_commit_count:
+    name: "Get Commit Count"
+    runs-on: ubuntu-latest
+    outputs:
+      commit_count: ${{ steps.set_commit_count.outputs.commit_count }}
+      patch_version_count: ${{ steps.set_commit_count.outputs.patch_version_count }}
+      minor_version_count: ${{ steps.set_commit_count.outputs.minor_version_count }}
+      major_version_count: ${{ steps.set_commit_count.outputs.major_version_count }}
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: "Commits since last tag"
+        run: |
+          echo COMMIT_COUNT="$(git rev-list "$(git describe --tags --abbrev=0)"..HEAD --count)" >> "$GITHUB_ENV"
+          echo PATCH_VERSION_COUNT="$(git rev-list "$(git describe --tags --abbrev=0)"..HEAD --pretty=oneline --grep='#PATCH_VERSION' --count)" >> "$GITHUB_ENV"
+          echo MINOR_VERSION_COUNT="$(git rev-list "$(git describe --tags --abbrev=0)"..HEAD --pretty=oneline --grep='#MINOR_VERSION' --count)" >> "$GITHUB_ENV"
+          echo MAJOR_VERSION_COUNT="$(git rev-list "$(git describe --tags --abbrev=0)"..HEAD --pretty=oneline --grep='#MAJOR_VERSION' --count)" >> "$GITHUB_ENV"
+
+      - id: set_commit_count
+        name: "Set Outputs"
+        run: |
+          echo "commit_count=${{env.COMMIT_COUNT}}" >> $GITHUB_OUTPUT
+          echo "patch_version_count=${{env.PATCH_VERSION_COUNT}}" >> $GITHUB_OUTPUT
+          echo "minor_version_count=${{env.MINOR_VERSION_COUNT}}" >> $GITHUB_OUTPUT
+          echo "major_version_count=${{env.MAJOR_VERSION_COUNT}}" >> $GITHUB_OUTPUT
+
+  bump_version:
+    name: "Bump Version"
+    needs: get_commit_count
+    if: needs.get_commit_count.outputs.commit_count > 0
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: '0'
+
+      - name: "Setup Python"
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: "Commits since last tag"
+        run: |
+          echo COMMIT_COUNT=${{needs.get_commit_count.outputs.commit_count}} >> "$GITHUB_ENV"
+          echo PATCH_VERSION_COUNT=${{needs.get_commit_count.outputs.patch_version_count}} >> "$GITHUB_ENV"
+          echo MINOR_VERSION_COUNT=${{needs.get_commit_count.outputs.minor_version_count}} >> "$GITHUB_ENV"
+          echo MAJOR_VERSION_COUNT=${{needs.get_commit_count.outputs.major_version_count}} >> "$GITHUB_ENV"
+
+      - name: "Install bump2version"
+        run: pip install -r <(cat requirements-local.txt | grep bump2version)
+
+      - name: "Bumped"
+        run: echo "BUMPED=FALSE" >> "$GITHUB_ENV"
+
+      - name: "Patch Version"
+        if: ${{ (env.PATCH_VERSION_COUNT > 0 || (env.MINOR_VERSION_COUNT == 0 && env.MAJOR_VERSION_COUNT == 0)) && (env.BUMPED == 'FALSE') }}
+        run: |
+          bump2version patch
+          echo "BUMPED=TRUE" >> "$GITHUB_ENV"
+
+      - name: "Minor Version"
+        if: ${{ env.MINOR_VERSION_COUNT > 0 && env.BUMPED == 'FALSE' }}
+        run: |
+          bump2version minor
+          echo "BUMPED=TRUE" >> "$GITHUB_ENV"
+
+      - name: "Major Version"
+        if: ${{ env.MAJOR_VERSION_COUNT > 0 && env.BUMPED == 'FALSE' }}
+        run: |
+          bump2version major
+          echo "BUMPED=TRUE" >> "$GITHUB_ENV"
+
+      - name: "Get Current Version"
+        run: echo "CURRENT_VERSION=$(grep current_version .bumpversion.cfg | sed 's/current_version//' | sed 's/=//' | sed 's/ //g')" >> "$GITHUB_ENV"
+
+      - name: "Set tag"
+        if: env.BUMPED == 'TRUE'
+        run: |
+          git --version
+          git config user.name "GitHub Actions Bot"
+          git config user.email "<>"
+          git commit -m 'CI Version bump to v${{ env.CURRENT_VERSION }}' -a
+          git tag -a v${{ env.CURRENT_VERSION }}  -m "Version ${{ env.CURRENT_VERSION }}"
+          git push origin v${{ env.CURRENT_VERSION }}
+          git push
+
+  build_and_publish:
+    name: Build and publish 📦 to PyPI
+    needs: bump_version
+    runs-on: ubuntu-latest
+    steps:
+      - name: check out the repo
+        uses: actions/checkout@v3
+        with:
+          ref: main
+
+      - name: set up python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install pypa/build
+        run: pip install -r <(cat requirements-local.txt | grep build)
+
+      - name: Build a binary wheel
+        run: python3 -m build
+
+      - name: pull latest changes
+        run: git pull origin main
+
+      - name: Publish distribution 📦 to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_TOKEN }}

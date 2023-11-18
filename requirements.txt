@@ -1,0 +1,7 @@
+docopt~=0.6.2
+jsons~=1.6.3
+playwright~=1.39.0
+python-dotenv~=1.0.0
+selectorlib==0.16.0
+smart-open~=6.3.0
+tqdm~=4.66.1

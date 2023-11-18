@@ -1,0 +1,59 @@
+name: Verification
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  style_check:
+    name: "Check Code Styles"
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - name: "Setup Python"
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: "Check Python Code Format"
+        run: |
+          pip install -r <(cat requirements-local.txt | grep yapf)
+          bash scripts/yapf.sh
+
+      - name: "Run Pylint Code Analyzer"
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-local.txt
+          bash scripts/pylint.sh
+        
+
+  unit_test:
+    name: "Test Code and Coverage"
+    needs:
+      - style_check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - name: "Setup Python"
+        id: python_cache
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: "Install Dependencies and Setup models"
+        run: |
+          pip install --upgrade pip
+          pip install pipenv
+          pip install -r requirements.txt
+          pip install -r requirements-local.txt
+
+      - name: "Run Unit Tests"
+        run: bash scripts/pytest.sh
+

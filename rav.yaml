@@ -1,0 +1,5 @@
+scripts:
+  version: bash scripts/version.sh
+  yapf: bash scripts/yapf.sh --apply
+  pylint: bash scripts/pylint.sh
+  pytest: bash scripts/pytest.sh

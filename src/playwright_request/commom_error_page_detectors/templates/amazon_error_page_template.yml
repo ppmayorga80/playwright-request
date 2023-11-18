@@ -1,0 +1,16 @@
+error_on_title:
+  xpath: '//title[contains(text(),"Sorry! Something went wrong")]'
+  type: Text
+
+error_on_image:
+  xpath: '//img[contains(@alt,"Sorry! Something went wrong")]'
+  type: Attribute
+  attribute: alt
+
+refusing_connection:
+  xpath: '//h1[@class="title-text" and contains(text(),"The proxy server is refusing connections")]'
+  Type: Text
+
+robot_detection:
+  xpath: '//p[contains(text(),"Sorry, we just need to make sure you") and contains(text(),"re not a robot")]'
+  Type: Text
