@@ -21,7 +21,7 @@ class RouteInterceptor:
         'image', 'stylesheet', 'media', 'font', 'other'
     ]
     DEFAULT_KEYWORD_RE_EXCLUSIONS = [
-        "airdog", "tracking", ".jpg", "a0.muscache.com"
+        "airdog", "tracking", ".svg", ".gif", ".jpg", "a0.muscache.com"
     ]
 
     def __init__(self,
@@ -68,10 +68,12 @@ class RouteInterceptor:
     def block_on(self):
         """set block resources flag to True"""
         self.block_resources = True
+        return self
 
     def block_off(self):
         """set block resources flag to False"""
         self.block_resources = False
+        return self
 
     def route_intercept(self, route):
         """intercept route in order to detect and invalidate load images or other resources"""

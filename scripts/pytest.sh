@@ -8,6 +8,7 @@ echo "| .__/ \__, |\__\___||___/\__|"
 echo "|_|    |___/                  "
 
 export PYTHONPATH="$PWD/src"
+export HEADLESS="True"
 
 #1. set the test coverage value and other shell variables
 COVERAGE_THRESHOLD="100"

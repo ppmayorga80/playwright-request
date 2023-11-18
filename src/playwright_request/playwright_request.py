@@ -114,8 +114,6 @@ class PlaywrightRequest:
                 browser = await p.chromium.launch(headless=self.headless, proxy=self.proxy)
             elif self.browser_type == BrowserType.WEBKIT:
                 browser = await p.webkit.launch(headless=self.headless, proxy=self.proxy)
-            else:
-                browser = await p.firefox.launch(headless=self.headless, proxy=self.proxy)
 
             context = await browser.new_context()
             tasks = [
@@ -145,8 +143,8 @@ class PlaywrightRequest:
         try:
             page: Page = await context.new_page()
         except Exception as e:
-            log_message(f"Error `new_page()` at '{url}': {e}", "error")
-            return PlaywrightResponse(content="", html="", status_code=500, exception_list=[str(e)],
+            log_message(f"Exception at `new_page()` for '{url}': {e}", "error")
+            return PlaywrightResponse(content="", html="", status_code=-1, exception_list=[str(e)],
                                       extra_result=None)
 
         # 2.1 configure a route interceptor
@@ -192,7 +190,7 @@ class PlaywrightRequest:
                 error_list = error_detector.detect_errors(html)
                 if error_list:
                     error_flag = True
-                    log_message(f"'{error_detector.__name__}' detects the following errors:", "error")
+                    log_message(f"'{error_detector.__class__.__name__}' detects the following errors:", "error")
                     log_message(", ".join(error_list), "error")
             html = "" if error_flag else html
 
