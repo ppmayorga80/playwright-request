@@ -10,7 +10,7 @@ from playwright_request.error_page_detector import ErrorPageDetector
 from playwright_request.playwright_request import log_message, PlaywrightResponse, PlaywrightRequest
 from playwright_request.route_interceptor import RouteInterceptor
 
-HEADLESS = eval(os.environ.get("HEADLESS", "False"))
+HEADLESS = os.environ.get("HEADLESS", "False").lower() == "true"
 # 1. test Pi page at wikipedia
 GOOD_URL = "https://en.wikipedia.org/wiki/Pi"
 BAD_URL = "https://en.wikipedia.org/wiki/not/existing/page/here"
@@ -98,7 +98,7 @@ def test_request():
 
 def new_page_exception():
     """raise an exception when new_page is called"""
-    raise Exception("Exception: general mock exception for playwright")
+    raise ValueError("Exception: general mock exception for playwright")
 
 
 @patch.object(playwright.async_api.BrowserContext, 'new_page')
@@ -123,17 +123,20 @@ def test_new_page_raises(mock_new_page):
 
 def goto_exception(url: str, timeout: int = 0):
     """raise an exception when goto is called"""
-    raise Exception(f"Exception: can't goto(url='{url}', timeout={timeout})")
+    raise ValueError(f"Exception: can't goto(url='{url}', timeout={timeout})")
 
 
 def wait_for_load_state_exception(state: str = "", timeout: int = 0):
     """raise an exception when wait_for_load_state is called"""
-    raise Exception(f"Exception: can't wait_for_load_state(state='{state}', timeout={timeout})")
+    raise ValueError(
+        f"Exception: can't wait_for_load_state(state='{state}', timeout={timeout})"
+    )
 
 
 @patch.object(playwright.async_api.Page, 'wait_for_load_state')
 @patch.object(playwright.async_api.Page, 'goto')
-def test_goto_and_wait_for_load_state_raises(mock_goto, mock_wait_for_load_state):
+def test_goto_and_wait_for_load_state_raises(mock_goto,
+                                             mock_wait_for_load_state):
     """inject an exception and test results"""
     # 1. mock the context
     mock_goto.side_effect = goto_exception
@@ -151,7 +154,9 @@ def test_goto_and_wait_for_load_state_raises(mock_goto, mock_wait_for_load_state
     responses = requester.request(urls=[GOOD_URL])
     assert responses[0].status_code == -1
     assert responses[0].exception_list
-    assert len(responses[0].exception_list) == 3  # goto(), await_for_load_state('networkidle'),await_for_load_state()
+    assert len(
+        responses[0].exception_list
+    ) == 3  # goto(), await_for_load_state('networkidle'),await_for_load_state()
     assert all("Exception:" in x for x in responses[0].exception_list)
 
 
@@ -170,12 +175,13 @@ class WikipediaErrorPageDetector(ErrorPageDetector):
 def test_with_error_page_detectors():
     """test for error detectors"""
     # 1. define a requester object
-    requester = PlaywrightRequest(browser=BrowserType.FIREFOX,
-                                  headless=HEADLESS,
-                                  route_interceptor=None,
-                                  await_for_networkidle=False,
-                                  await_for_load_state=False,
-                                  error_page_detectors=[WikipediaErrorPageDetector()])
+    requester = PlaywrightRequest(
+        browser=BrowserType.FIREFOX,
+        headless=HEADLESS,
+        route_interceptor=None,
+        await_for_networkidle=False,
+        await_for_load_state=False,
+        error_page_detectors=[WikipediaErrorPageDetector()])
     # 2 get the response and test is OK
     responses = requester.request(urls=[GOOD_URL])
     assert responses[0].status_code // 100 == 2  # 2xx

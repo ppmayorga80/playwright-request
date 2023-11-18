@@ -38,14 +38,12 @@ class PlaywrightResponse:
 
     @classmethod
     def exception(cls) -> 'PlaywrightResponse':
-        return cls(
-            content="",
-            html="",
-            status_code=-1,
-            exception_list=["Exception"],
-            error_list=[],
-            extra_result=None
-        )
+        return cls(content="",
+                   html="",
+                   status_code=-1,
+                   exception_list=["Exception"],
+                   error_list=[],
+                   extra_result=None)
 
 
 class PlaywrightRequest:
@@ -67,7 +65,8 @@ class PlaywrightRequest:
         self.await_for_networkidle: bool = await_for_networkidle
         self.await_for_load_state: bool = await_for_load_state
         self.timeout_ms: int = timeout_ms
-        self.error_page_detectors: list[ErrorPageDetector] = error_page_detectors
+        self.error_page_detectors: list[
+            ErrorPageDetector] = error_page_detectors
 
         self.urls: list[str] = []
         self.responses: list[PlaywrightResponse] = []
@@ -80,6 +79,8 @@ class PlaywrightRequest:
         useful when inherit this class and do operation over the page
         like click on elements etc...
         """
+        log_message(
+            f"default extra_function that does nothing with page={page}")
         return None
 
     def __str__(self):
@@ -94,39 +95,42 @@ class PlaywrightRequest:
     def request(self, urls: list[str]) -> list[PlaywrightResponse]:
         """request operations over the urls"""
         self.urls = urls
-        t1 = time.perf_counter()
+        starting_time = time.perf_counter()
         responses = asyncio.run(self._request_many(urls=urls))
 
         self.responses = responses
         self.htmls = [x.html for x in responses]
         self.status_codes = [x.status_code for x in responses]
 
-        t2 = time.perf_counter()
-        self.elapsed_time = t2 - t1
+        ending_time = time.perf_counter()
+        self.elapsed_time = ending_time - starting_time
         return self.responses
 
     async def _request_many(self, urls: list[str]) -> list[PlaywrightResponse]:
         """request many urls asynchronously"""
         async with async_playwright() as p:
             if self.browser_type == BrowserType.FIREFOX:
-                browser = await p.firefox.launch(headless=self.headless, proxy=self.proxy)
+                browser = await p.firefox.launch(headless=self.headless,
+                                                 proxy=self.proxy)
             elif self.browser_type == BrowserType.CHROMIUM:
-                browser = await p.chromium.launch(headless=self.headless, proxy=self.proxy)
+                browser = await p.chromium.launch(headless=self.headless,
+                                                  proxy=self.proxy)
             elif self.browser_type == BrowserType.WEBKIT:
-                browser = await p.webkit.launch(headless=self.headless, proxy=self.proxy)
+                browser = await p.webkit.launch(headless=self.headless,
+                                                proxy=self.proxy)
 
             context = await browser.new_context()
             tasks = [
                 asyncio.ensure_future(
-                    self._request_one(
-                        context=context,
-                        url=url
-                    ))
+                    self._request_one(context=context, url=url))
                 for url in urls
             ]
-            raw_responses = await asyncio.gather(*tasks, return_exceptions=True)
-            responses = [x if isinstance(x, PlaywrightResponse) else PlaywrightResponse.exception()
-                         for x in raw_responses]
+            raw_responses = await asyncio.gather(*tasks,
+                                                 return_exceptions=True)
+            responses = [
+                x if isinstance(x, PlaywrightResponse) else
+                PlaywrightResponse.exception() for x in raw_responses
+            ]
 
             return responses
 
@@ -142,13 +146,18 @@ class PlaywrightRequest:
         # 1. open a new page
         try:
             page: Page = await context.new_page()
-        except Exception as e:
-            log_message(f"Exception at `new_page()` for '{url}': {e}", "error")
-            return PlaywrightResponse(content="", html="", status_code=-1, exception_list=[str(e)],
+        except Exception as error:
+            log_message(f"Exception at `new_page()` for '{url}': {error}",
+                        "error")
+            return PlaywrightResponse(content="",
+                                      html="",
+                                      status_code=-1,
+                                      exception_list=[str(error)],
                                       extra_result=None)
 
         # 2.1 configure a route interceptor
-        if self.route_interceptor and (self.route_interceptor.block_resources is True):
+        if self.route_interceptor and (self.route_interceptor.block_resources
+                                       is True):
             await page.route("**/*", self.route_interceptor.route_intercept)
 
         status_code = -1
@@ -160,23 +169,28 @@ class PlaywrightRequest:
             status_code = response.status
             ok_str = f"{status_code}-OK✅" if response.ok else f"{status_code}-🔴"
             log_message(f"Response: {status_code}, {ok_str}", "info")
-        except Exception as e:
-            exception_list.append(str(e))
-            log_message(f"Error `goto()` at '{url}': {e}", "error")
+        except Exception as error:
+            exception_list.append(str(error))
+            log_message(f"Error `goto()` at '{url}': {error}", "error")
 
         # 3. wait until the page is loaded if necessary
         if self.await_for_networkidle:
             try:
-                await page.wait_for_load_state(state='networkidle', timeout=self.timeout_ms)
-            except Exception as e:
-                exception_list.append(str(e))
-                log_message(f"Error `wait_for_load_state(state='networkidle')` at '{url}': {e}", "error")
+                await page.wait_for_load_state(state='networkidle',
+                                               timeout=self.timeout_ms)
+            except Exception as error:
+                exception_list.append(str(error))
+                log_message(
+                    f"Error `wait_for_load_state(state='networkidle')` at '{url}': {error}",
+                    "error")
         if self.await_for_load_state:
             try:
                 await page.wait_for_load_state(timeout=self.timeout_ms)
-            except Exception as e:
-                exception_list.append(str(e))
-                log_message(f"Error `wait_for_load_state()` at '{url}': {e}", "error")
+            except Exception as error:
+                exception_list.append(str(error))
+                log_message(
+                    f"Error `wait_for_load_state()` at '{url}': {error}",
+                    "error")
 
         # 4. get the html content
         original_html = await page.content()
@@ -190,7 +204,9 @@ class PlaywrightRequest:
                 error_list = error_detector.detect_errors(html)
                 if error_list:
                     error_flag = True
-                    log_message(f"'{error_detector.__class__.__name__}' detects the following errors:", "error")
+                    log_message(
+                        f"'{error_detector.__class__.__name__}' detects the following errors:",
+                        "error")
                     log_message(", ".join(error_list), "error")
             html = "" if error_flag else html
 
@@ -199,11 +215,9 @@ class PlaywrightRequest:
 
         await page.close()
 
-        return PlaywrightResponse(
-            content=original_html,
-            html=html,
-            status_code=status_code,
-            exception_list=exception_list,
-            error_list=error_list,
-            extra_result=extra_result
-        )
+        return PlaywrightResponse(content=original_html,
+                                  html=html,
+                                  status_code=status_code,
+                                  exception_list=exception_list,
+                                  error_list=error_list,
+                                  extra_result=extra_result)
