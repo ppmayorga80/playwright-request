@@ -1,18 +1,15 @@
-"""file with the class PlaywrightRequest"""
-import json
+"""playwright request file"""
+import asyncio
 import logging
 import time
-
-import asyncio
-from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any
 
-from playwright.async_api import async_playwright
+from playwright.async_api import async_playwright, Page
 
-from browser_type import BrowserType
-from error_page_detector import ErrorPageDetector
-from route_interceptor import RouteInterceptor
+from playwright_request.browser_type import BrowserType
+from playwright_request.error_page_detector import ErrorPageDetector
+from playwright_request.route_interceptor import RouteInterceptor
 
 
 def log_message(msg: str, level: str = "info"):  # pragma: no cover
@@ -30,7 +27,8 @@ def log_message(msg: str, level: str = "info"):  # pragma: no cover
 
 
 @dataclass
-class PlaywrightResponse:  # pragma: no cover
+class PlaywrightResponse:
+    """response class for playwright request class"""
     content: str
     html: str
     status_code: int
@@ -50,7 +48,7 @@ class PlaywrightResponse:  # pragma: no cover
         )
 
 
-class PlaywrightRequest:  # pragma: no cover
+class PlaywrightRequest:
     """class to implement request with playwright"""
 
     def __init__(self,
@@ -77,7 +75,7 @@ class PlaywrightRequest:  # pragma: no cover
         self.status_codes: list[int] = []
         self.elapsed_time: float = 0.0
 
-    async def operate_page_fn(self, url: str, page) -> Any:
+    async def extra_function(self, page: Page or None) -> Any:
         """define a function to operate the page before close
         useful when inherit this class and do operation over the page
         like click on elements etc...
@@ -145,10 +143,11 @@ class PlaywrightRequest:  # pragma: no cover
 
         # 1. open a new page
         try:
-            page = await context.new_page()
+            page: Page = await context.new_page()
         except Exception as e:
             log_message(f"Error `new_page()` at '{url}': {e}", "error")
-            return PlaywrightResponse(content="", html="", status_code=500, exception_list=[str(e)], extra_result=None)
+            return PlaywrightResponse(content="", html="", status_code=500, exception_list=[str(e)],
+                                      extra_result=None)
 
         # 2.1 configure a route interceptor
         if self.route_interceptor and (self.route_interceptor.block_resources is True):
@@ -198,7 +197,7 @@ class PlaywrightRequest:  # pragma: no cover
             html = "" if error_flag else html
 
         # if implemented, operate over the page
-        extra_result = await self.operate_page_fn(page=page)
+        extra_result = await self.extra_function(page=page)
 
         await page.close()
 
@@ -210,79 +209,3 @@ class PlaywrightRequest:  # pragma: no cover
             error_list=error_list,
             extra_result=extra_result
         )
-
-
-class TripadvisorPhotosRequest(PlaywrightRequest):
-
-    async def operate_page_fn(self, page) -> list[str]:
-        images = []
-
-        try:
-            await page.wait_for_load_state(timeout=3000)
-            await page.wait_for_load_state("networkidle", timeout=3000)
-        except:
-            pass
-        # await page.wait_for_timeout(timeout=3000)
-
-        await page.wait_for_selector('text=View all photos', timeout=5000)
-        await page.click('text=View all photos')
-
-        await page.locator('//div[@aria-label="View photo"]').first.click()
-        loc = page.locator('//picture[@class="NhWcC _R mdkdE QjYVS afQPz eXZKw"]').first.locator('//img')
-        src = await loc.get_attribute("src")
-        print(0, src)
-        images.append(src)
-
-        for i in range(10000):
-            await page.wait_for_load_state(timeout=200)
-            await page.wait_for_selector('//button[@aria-label="Next"]', timeout=3000)
-
-            try:
-                await page.locator('//button[@aria-label="Next"]').first.click(timeout=3000)
-            except:
-                break
-
-            loc = page.locator('//picture[@class="NhWcC _R mdkdE QjYVS afQPz eXZKw"]').nth(1).locator('//img')
-            src = await loc.get_attribute("src")
-            print(i + 1, src)
-            images.append(src)
-
-        # await page.locator('//div[@aria-label="View photo"]').first.hover()
-        # for _ in range(100):
-        #     await page.mouse.wheel(0, 300)
-        # html = await page.content()
-        # print(html)
-        print("hello")
-        return images
-
-
-def main():  # pragma: no cover
-    interceptor = RouteInterceptor(block_resources=False).set_default_exclusions()
-    interceptor.block_off()
-    urls = ["https://www.tripadvisor.com/Hotel_Review-g29092-d75680-Reviews-or10",
-            "https://www.tripadvisor.com/Hotel_Review-g29092-d75680-Reviews-or20",
-            "https://www.tripadvisor.com/Hotel_Review-g29092-d75680-Reviews-or30"]
-    urls = [
-        "https://www.tripadvisor.com/Hotel_Review-g56003-d19120904-Reviews-The_Westin_Houston_Medical_Center-Houston_Texas.html",
-        "https://www.tripadvisor.com/Hotel_Review-g29092-d75680-Reviews-Howard_Johnson_by_Wyndham_Anaheim_Hotel_and_Water_Playground-Anaheim_California.html"
-    ]
-    requester = TripadvisorPhotosRequest(headless=True, route_interceptor=interceptor)
-    responses = requester.request(urls)
-    all_images = [x.extra_result for x in responses]
-
-    data = [
-        {
-            "url": url,
-            "images": len(images) if images is not None else None
-        }
-        for url, images in zip(urls, all_images)
-    ]
-
-    print(requester)
-    print("images")
-    # print(json.dumps(all_images, indent=3))
-    print(json.dumps(data, indent=3))
-
-
-if __name__ == '__main__':  # pragma: no cover
-    main()
