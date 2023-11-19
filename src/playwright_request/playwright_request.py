@@ -10,21 +10,7 @@ from playwright.async_api import async_playwright, Page
 from playwright_request.browser_type import BrowserType
 from playwright_request.error_page_detector import ErrorPageDetector
 from playwright_request.route_interceptor import RouteInterceptor
-
-
-def log_message(msg: str, level: str = "info"):  # pragma: no cover
-    """logging message with a predefined level"""
-    if level == "info":
-        logging.info(msg)
-    elif level == "warning":
-        logging.warning(msg)
-    elif level == "error":
-        logging.error(msg)
-    elif level == "debug":
-        logging.debug(msg)
-    else:
-        logging.info(msg)
-
+from playwright_request.utils.log_message import log_message
 
 @dataclass
 class PlaywrightResponse:
@@ -37,7 +23,7 @@ class PlaywrightResponse:
     extra_result: Any = None
 
     @classmethod
-    def exception(cls) -> 'PlaywrightResponse':
+    def exception_response(cls) -> 'PlaywrightResponse':
         return cls(content="",
                    html="",
                    status_code=-1,
@@ -108,11 +94,11 @@ class PlaywrightRequest:
         ]
         return "\n".join(lines)
 
-    def request(self, urls: list[str]) -> list[PlaywrightResponse]:
+    def get(self, urls: list[str]) -> list[PlaywrightResponse]:
         """request operations over the urls"""
         self.urls = urls
         starting_time = time.perf_counter()
-        responses = asyncio.run(self._request_many(urls=urls))
+        responses = asyncio.run(self._get_many(urls=urls))
 
         self.responses = responses
         self.htmls = [x.html for x in responses]
@@ -122,7 +108,7 @@ class PlaywrightRequest:
         self.elapsed_time = ending_time - starting_time
         return self.responses
 
-    async def _request_many(self, urls: list[str]) -> list[PlaywrightResponse]:
+    async def _get_many(self, urls: list[str]) -> list[PlaywrightResponse]:
         """request many urls asynchronously"""
         async with async_playwright() as p:
             if self.browser_type == BrowserType.FIREFOX:
@@ -138,19 +124,19 @@ class PlaywrightRequest:
             context = await browser.new_context()
             tasks = [
                 asyncio.ensure_future(
-                    self._request_one(context=context, url=url))
+                    self._get_one(context=context, url=url))
                 for url in urls
             ]
             raw_responses = await asyncio.gather(*tasks,
                                                  return_exceptions=True)
             responses = [
                 x if isinstance(x, PlaywrightResponse) else
-                PlaywrightResponse.exception() for x in raw_responses
+                PlaywrightResponse.exception_response() for x in raw_responses
             ]
 
             return responses
 
-    async def _request_one(self, context, url) -> PlaywrightResponse:
+    async def _get_one(self, context, url) -> PlaywrightResponse:
         """request one html from url by using the context object
         and returns a tuple with:
             original html

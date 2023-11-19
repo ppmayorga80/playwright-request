@@ -17,15 +17,6 @@ GOOD_URL = "https://en.wikipedia.org/wiki/Pi"
 BAD_URL = "https://en.wikipedia.org/wiki/not/existing/page/here"
 
 
-def test_log_message():
-    """test log_message function"""
-    log_message("hello", "info")
-    log_message("hello", "warning")
-    log_message("hello", "error")
-    log_message("hello", "debug")
-    log_message("hello", "other")
-
-
 def test_playwright_response():
     """test PlaywrightResponse class"""
 
@@ -33,7 +24,7 @@ def test_playwright_response():
     assert resp
     assert resp.status_code == 200
 
-    resp = PlaywrightResponse.exception()
+    resp = PlaywrightResponse.exception_response()
     assert isinstance(resp, PlaywrightResponse)
     assert resp.content == ""
     assert resp.html == ""
@@ -52,8 +43,10 @@ def test_playwright_request_constructor():
     assert not requester.status_codes
     assert not requester.elapsed_time
 
-async def extra_func(page:Page)->str:
+
+async def extra_func(page: Page) -> str:
     return "hello world"
+
 
 async def test_playwright_request_extra_function():
     """test extra function"""
@@ -62,7 +55,7 @@ async def test_playwright_request_extra_function():
     res = await requester.extra_function(page=None)
     assert res is None
 
-    #2. test extra func
+    # 2. test extra func
     requester = PlaywrightRequest(extra_async_function_ptr=extra_func)
     res = await requester.extra_function(page=None)
     assert res == "hello world"
@@ -87,7 +80,7 @@ def test_request():
                                   headless=HEADLESS,
                                   route_interceptor=interceptor)
     # 1.3 get the responses
-    responses = requester.request(urls=[GOOD_URL])
+    responses = requester.get(urls=[GOOD_URL])
     # 1.4 test the results
     assert isinstance(responses, list)
     assert len(responses) == 1
@@ -101,7 +94,7 @@ def test_request():
         req = PlaywrightRequest(browser=t,
                                 headless=HEADLESS,
                                 route_interceptor=interceptor)
-        res = req.request([GOOD_URL])
+        res = req.get([GOOD_URL])
         assert res[0].status_code > 0
 
 
@@ -123,7 +116,7 @@ def test_new_page_raises(mock_new_page):
                                   headless=HEADLESS,
                                   route_interceptor=interceptor)
     # 1.3 get the responses
-    responses = requester.request(urls=[GOOD_URL])
+    responses = requester.get(urls=[GOOD_URL])
     assert responses[0].status_code == -1
     assert not responses[0].content
     assert responses[0].exception_list
@@ -160,7 +153,7 @@ def test_goto_and_wait_for_load_state_raises(mock_goto,
                                   await_for_networkidle=True,
                                   await_for_load_state=True)
     # 1.3 get the responses
-    responses = requester.request(urls=[GOOD_URL])
+    responses = requester.get(urls=[GOOD_URL])
     assert responses[0].status_code == -1
     assert responses[0].exception_list
     assert len(
@@ -192,13 +185,13 @@ def test_with_error_page_detectors():
         await_for_load_state=False,
         error_page_detectors=[WikipediaErrorPageDetector()])
     # 2 get the response and test is OK
-    responses = requester.request(urls=[GOOD_URL])
+    responses = requester.get(urls=[GOOD_URL])
     assert responses[0].status_code // 100 == 2  # 2xx
     assert not responses[0].error_list
     assert responses[0].html
 
     # 3. get another response and test is BAD
-    responses = requester.request(urls=[BAD_URL])
+    responses = requester.get(urls=[BAD_URL])
     assert responses[0].status_code // 100 == 4  # 4xx (for this case is 404)
     assert responses[0].error_list  # contains errors
     assert not responses[0].html  # the html is empty
