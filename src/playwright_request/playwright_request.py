@@ -3,7 +3,7 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Callable
 
 from playwright.async_api import async_playwright, Page
 
@@ -57,7 +57,20 @@ class PlaywrightRequest:
                  await_for_networkidle: bool = False,
                  await_for_load_state: bool = False,
                  timeout_ms: int = 15000,
-                 error_page_detectors: list[ErrorPageDetector] or None = None):
+                 error_page_detectors: list[ErrorPageDetector] or None = None,
+                 extra_async_function_ptr: Callable[[Page], Any] or None = None):
+        """constructor
+
+        :param browser: the browser type FIREFOX, CHROMIUM, WEBKIT
+        :param headless: flag to show or hide browser GUI
+        :param route_interceptor: the object that intercepts routes and filter images,css, etc.
+        :param proxy: proxy dictionary {"server":"","username":"","password":""}
+        :param await_for_networkidle: flag to wait for networkidle while loading state
+        :param await_for_load_state: flag to wait for load_state while loading state
+        :param timeout_ms: the number of milliseconds to wait when waiting for networkidle or load_satte
+        :param error_page_detectors: the list of objects able to detect error pages
+        :param extra_async_function_ptr: additional async function used to compute extra response data
+        """
         self.browser_type: BrowserType = browser
         self.headless: bool = headless
         self.route_interceptor: RouteInterceptor = route_interceptor
@@ -67,6 +80,7 @@ class PlaywrightRequest:
         self.timeout_ms: int = timeout_ms
         self.error_page_detectors: list[
             ErrorPageDetector] = error_page_detectors
+        self.extra_async_function_ptr = extra_async_function_ptr
 
         self.urls: list[str] = []
         self.responses: list[PlaywrightResponse] = []
@@ -79,6 +93,8 @@ class PlaywrightRequest:
         useful when inherit this class and do operation over the page
         like click on elements etc...
         """
+        if self.extra_async_function_ptr:
+            return await self.extra_async_function_ptr(page=page)
         log_message(
             f"default extra_function that does nothing with page={page}")
         return None

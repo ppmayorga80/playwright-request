@@ -3,6 +3,7 @@ import os
 from unittest.mock import patch
 
 import playwright.async_api
+from playwright.async_api import Page
 from selectorlib import Extractor
 
 from playwright_request.browser_type import BrowserType
@@ -51,12 +52,20 @@ def test_playwright_request_constructor():
     assert not requester.status_codes
     assert not requester.elapsed_time
 
+async def extra_func(page:Page)->str:
+    return "hello world"
 
 async def test_playwright_request_extra_function():
     """test extra function"""
+    # 1. test default extra function
     requester = PlaywrightRequest()
     res = await requester.extra_function(page=None)
     assert res is None
+
+    #2. test extra func
+    requester = PlaywrightRequest(extra_async_function_ptr=extra_func)
+    res = await requester.extra_function(page=None)
+    assert res == "hello world"
 
 
 def test_str_magic_method():
