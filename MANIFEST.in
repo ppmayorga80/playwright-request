@@ -1,1 +1,3 @@
-include playwright_request/commom_error_page_detectors/templates/*
+graft src
+graft tests
+graft docs
