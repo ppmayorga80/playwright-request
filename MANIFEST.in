@@ -1,1 +1,1 @@
-include playwright_request/commom_error_page_detectors/templates
+include playwright_request/commom_error_page_detectors/templates/*
