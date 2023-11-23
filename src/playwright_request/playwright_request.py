@@ -54,7 +54,7 @@ class PlaywrightRequest:
         :param route_interceptor: the object that intercepts routes and filter images,css, etc.
         :param proxy: proxy dictionary {"server":"","username":"","password":""}
         :param await_for_networkidle: flag to wait for networkidle while loading state
-        :param await_for_doom: await for doom-content loading state
+        :param await_for_doom: await for doom-content while loading state
         :param await_for_load_state: flag to wait for load_state while loading state
         :param timeout_ms: the number of milliseconds to wait when waiting for networkidle or load_satte
         :param error_page_detectors: the list of objects able to detect error pages
