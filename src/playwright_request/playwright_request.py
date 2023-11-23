@@ -1,6 +1,5 @@
 """playwright request file"""
 import asyncio
-import logging
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
@@ -11,6 +10,7 @@ from playwright_request.browser_type import BrowserType
 from playwright_request.error_page_detector import ErrorPageDetector
 from playwright_request.route_interceptor import RouteInterceptor
 from playwright_request.utils.log_message import log_message
+
 
 @dataclass
 class PlaywrightResponse:
@@ -41,10 +41,12 @@ class PlaywrightRequest:
                  route_interceptor: RouteInterceptor or None = None,
                  proxy: dict or None = None,
                  await_for_networkidle: bool = False,
+                 await_for_doom: bool = False,
                  await_for_load_state: bool = False,
                  timeout_ms: int = 15000,
                  error_page_detectors: list[ErrorPageDetector] or None = None,
-                 extra_async_function_ptr: Callable[[Page], Any] or None = None):
+                 extra_async_function_ptr: Callable[[Page], Any]
+                 or None = None):
         """constructor
 
         :param browser: the browser type FIREFOX, CHROMIUM, WEBKIT
@@ -52,6 +54,7 @@ class PlaywrightRequest:
         :param route_interceptor: the object that intercepts routes and filter images,css, etc.
         :param proxy: proxy dictionary {"server":"","username":"","password":""}
         :param await_for_networkidle: flag to wait for networkidle while loading state
+        :param await_for_doom: await for doom-content loading state
         :param await_for_load_state: flag to wait for load_state while loading state
         :param timeout_ms: the number of milliseconds to wait when waiting for networkidle or load_satte
         :param error_page_detectors: the list of objects able to detect error pages
@@ -62,6 +65,7 @@ class PlaywrightRequest:
         self.route_interceptor: RouteInterceptor = route_interceptor
         self.proxy: dict = proxy
         self.await_for_networkidle: bool = await_for_networkidle
+        self.await_for_doom: bool = await_for_doom
         self.await_for_load_state: bool = await_for_load_state
         self.timeout_ms: int = timeout_ms
         self.error_page_detectors: list[
@@ -123,8 +127,7 @@ class PlaywrightRequest:
 
             context = await browser.new_context()
             tasks = [
-                asyncio.ensure_future(
-                    self._get_one(context=context, url=url))
+                asyncio.ensure_future(self._get_one(context=context, url=url))
                 for url in urls
             ]
             raw_responses = await asyncio.gather(*tasks,
@@ -185,6 +188,17 @@ class PlaywrightRequest:
                 log_message(
                     f"Error `wait_for_load_state(state='networkidle')` at '{url}': {error}",
                     "error")
+
+        if self.await_for_doom:
+            try:
+                await page.wait_for_load_state('domcontentloaded',
+                                               timeout=self.timeout_ms)
+            except Exception as error:
+                exception_list.append(str(error))
+                log_message(
+                    f"Error `wait_for_load_state('domcontentloaded')` at '{url}': {error}",
+                    "error")
+
         if self.await_for_load_state:
             try:
                 await page.wait_for_load_state(timeout=self.timeout_ms)

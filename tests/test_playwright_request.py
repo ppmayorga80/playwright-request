@@ -8,7 +8,7 @@ from selectorlib import Extractor
 
 from playwright_request.browser_type import BrowserType
 from playwright_request.error_page_detector import ErrorPageDetector
-from playwright_request.playwright_request import log_message, PlaywrightResponse, PlaywrightRequest
+from playwright_request.playwright_request import PlaywrightResponse, PlaywrightRequest
 from playwright_request.route_interceptor import RouteInterceptor
 
 HEADLESS = os.environ.get("HEADLESS", "False").lower() == "true"
@@ -45,7 +45,7 @@ def test_playwright_request_constructor():
 
 
 async def extra_func(page: Page) -> str:
-    return "hello world"
+    return "hello world" if page is not None else "hello"
 
 
 async def test_playwright_request_extra_function():
@@ -151,6 +151,7 @@ def test_goto_and_wait_for_load_state_raises(mock_goto,
                                   headless=HEADLESS,
                                   route_interceptor=interceptor,
                                   await_for_networkidle=True,
+                                  await_for_doom=True,
                                   await_for_load_state=True)
     # 1.3 get the responses
     responses = requester.get(urls=[GOOD_URL])
@@ -158,7 +159,7 @@ def test_goto_and_wait_for_load_state_raises(mock_goto,
     assert responses[0].exception_list
     assert len(
         responses[0].exception_list
-    ) == 3  # goto(), await_for_load_state('networkidle'),await_for_load_state()
+    ) == 4  # goto(), await_for_load_state('networkidle'),await_for_load_state('doomcontentloaded') and await_for_load_state()
     assert all("Exception:" in x for x in responses[0].exception_list)
 
 
@@ -182,6 +183,7 @@ def test_with_error_page_detectors():
         headless=HEADLESS,
         route_interceptor=None,
         await_for_networkidle=False,
+        await_for_doom=False,
         await_for_load_state=False,
         error_page_detectors=[WikipediaErrorPageDetector()])
     # 2 get the response and test is OK
