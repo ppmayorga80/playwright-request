@@ -56,7 +56,7 @@ class PlaywrightRequest:
         :param await_for_networkidle: flag to wait for networkidle while loading state
         :param await_for_doom: await for doom-content while loading state
         :param await_for_load_state: flag to wait for load_state while loading state
-        :param timeout_ms: the number of milliseconds to wait when waiting for networkidle or load_satte
+        :param timeout_ms: the number of milliseconds to wait when waiting for the function `wait_for_load_state`
         :param error_page_detectors: the list of objects able to detect error pages
         :param extra_async_function_ptr: additional async function used to compute extra response data
         """
