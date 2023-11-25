@@ -3,6 +3,7 @@ from selectorlib import Extractor
 
 from playwright_request.commom_error_page_detectors.airbnb_error_page_detector import AirbnbErrorPageDetector
 from playwright_request.commom_error_page_detectors.amazon_error_page_detector import AmazonErrorPageDetector
+from playwright_request.commom_error_page_detectors.proxy_error_page_detector import ProxyErrorPageDetector
 from playwright_request.commom_error_page_detectors.tripadvisor_error_page_detector import TripadvisorErrorPageDetector
 from playwright_request.error_page_detector import ErrorPageDetector
 
@@ -44,11 +45,13 @@ def test_custom_classes():
     airbnb_error_html = "<html><body><div><h1>Oops!</h1><p>You don't have permission to access</p></div></body></html>"
     amazon_error_html = "<html><body><div><title>Sorry! Something went wrong</title><p>Sorry, we just need to make sure you're not a robot</p></div></body></html>"
     tripadvisor_error_html = "<html><body><div><h1>Access Denied!</h1></div></body></html>"
+    proxy_error_html = "<html><body><div><h1>This page isn’t working</h1></div></body></html>"
 
     # 2. define the detectors
     airbnb_error_detector = AirbnbErrorPageDetector()
     amazon_error_detector = AmazonErrorPageDetector()
     tripadvisor_error_detector = TripadvisorErrorPageDetector()
+    proxy_error_detector = ProxyErrorPageDetector()
 
     # 3. test airbnb detector
     errors = airbnb_error_detector.detect_errors(good_html)
@@ -66,4 +69,8 @@ def test_custom_classes():
     errors = tripadvisor_error_detector.detect_errors(good_html)
     assert not errors
     errors = tripadvisor_error_detector.detect_errors(tripadvisor_error_html)
+    assert errors
+
+    #5. test proxy not working detector
+    errors = proxy_error_detector.detect_errors(proxy_error_html)
     assert errors

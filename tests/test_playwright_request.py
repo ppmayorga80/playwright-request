@@ -57,7 +57,7 @@ async def test_playwright_request_extra_function():
 
     # 2. test extra func
     requester = PlaywrightRequest(extra_async_function_ptr=extra_func)
-    res = await requester.extra_function(page=None)
+    res = await requester.extra_function(page=True)
     assert res == "hello world"
 
 

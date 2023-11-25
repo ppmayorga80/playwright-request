@@ -1,0 +1,3 @@
+not_working:
+  xpath: '//*[contains(text(),"This page isn") and contains(text(),"t working")]'
+  type: Text

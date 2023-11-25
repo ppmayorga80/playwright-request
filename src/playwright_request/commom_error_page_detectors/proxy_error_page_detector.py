@@ -6,12 +6,12 @@ from selectorlib import Extractor
 from playwright_request.error_page_detector import ErrorPageDetector
 
 
-class TripadvisorErrorPageDetector(ErrorPageDetector):
+class ProxyErrorPageDetector(ErrorPageDetector):
     """class aiming to detect tripadvisor error pages"""
 
     def build_extractor(self) -> Extractor:
         """build the extractor"""
         path = os.path.join(os.path.dirname(__file__),
-                            "templates/tripadvisor_error_page_template.yml")
+                            "templates/proxy_error_page_template.yml")
         extractor = Extractor.from_yaml_file(path)
         return extractor
