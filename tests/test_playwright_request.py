@@ -34,6 +34,24 @@ def test_playwright_response():
     assert resp.extra_result is None
 
 
+def test_playwright_response_str():
+    """test the str magic method"""
+    resp = PlaywrightResponse(content="", html="GOOD", status_code=200)
+    text1 = str(resp)
+    assert "OK" in text1
+
+    resp = PlaywrightResponse(content="", html="", status_code=200)
+    text1 = str(resp)
+    assert "ERROR" in text1
+
+    resp = PlaywrightResponse(content="",
+                              html="GOOD",
+                              status_code=200,
+                              error_list=["ONE ERROR"])
+    text1 = str(resp)
+    assert "ERROR" in text1
+
+
 def test_playwright_request_constructor():
     """test constructor of class PlaywrightRequest"""
     requester = PlaywrightRequest()

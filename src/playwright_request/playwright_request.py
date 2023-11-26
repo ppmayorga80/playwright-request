@@ -22,6 +22,14 @@ class PlaywrightResponse:
     error_list: list = field(default_factory=list)
     extra_result: Any = None
 
+    def __str__(self):
+        """common magic method for str"""
+        text_ok = f"<{self.status_code} OK>🟢"
+        text_error = f"<{self.status_code} ERROR>🔴"
+        text = text_ok if (self.html and not self.error_list
+                           and not self.exception_list) else text_error
+        return text
+
     @classmethod
     def exception_response(cls) -> 'PlaywrightResponse':
         return cls(content="",
