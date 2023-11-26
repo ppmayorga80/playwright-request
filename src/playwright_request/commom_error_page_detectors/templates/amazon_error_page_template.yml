@@ -9,8 +9,16 @@ error_on_image:
 
 refusing_connection:
   xpath: '//h1[@class="title-text" and contains(text(),"The proxy server is refusing connections")]'
-  Type: Text
+  type: Text
 
 robot_detection:
   xpath: '//p[contains(text(),"Sorry, we just need to make sure you") and contains(text(),"re not a robot")]'
-  Type: Text
+  type: Text
+
+signin_detection:
+  xpath: '//h1[contains(text(),"Sign in")]'
+  type: Text
+
+cookies_detection:
+  xpath: '//h4[contains(text(),"Please Enable Cookies to Continue")]'
+  type: Text
