@@ -15,3 +15,15 @@ class AmazonErrorPageDetector(ErrorPageDetector):
                             "templates/amazon_error_page_template.yml")
         extractor = Extractor.from_yaml_file(path)
         return extractor
+
+    def detect_errors(self, html: str) -> list[str]:
+        """detect errors"""
+        #default errors defined by the extractor
+        errors = super().detect_errors(html=html)
+
+        #error from html content
+        text = "To discuss automated access to Amazon data please contact api-services-support@amazon.com"
+        errors += [text] if text in html else []
+
+        #return the errors
+        return errors
