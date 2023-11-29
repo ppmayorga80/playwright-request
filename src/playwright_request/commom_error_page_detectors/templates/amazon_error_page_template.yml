@@ -22,12 +22,3 @@ signin_detection:
 cookies_detection:
   xpath: '//h4[contains(text(),"Please Enable Cookies to Continue")]'
   type: Text
-
-history_detection_v1:
-  xpath: '//div[@aria-label="Your recently viewed items and featured recommendations"]'
-  type: Attribute
-  attribute: aria-label
-
-history_detection_v2:
-  xpath: '//div[contains(text(),"Your recently viewed items and featured recommendations")]'
-  type: Text

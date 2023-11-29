@@ -21,6 +21,7 @@ class ErrorPageDetector(ABC):
 
     def __init__(self):
         self.extractor: Extractor = self.build_extractor()
+        self.raw_data: dict = {}
 
     @abstractmethod
     def build_extractor(self) -> Extractor:
@@ -37,4 +38,5 @@ class ErrorPageDetector(ABC):
         """
         raw_data = self.extractor.extract(html)
         error_flags = [f"{{'{k}':'{v}'}}" for k, v in raw_data.items() if v]
+        self.raw_data = raw_data
         return error_flags
