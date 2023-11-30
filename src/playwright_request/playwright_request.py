@@ -173,7 +173,7 @@ class PlaywrightRequest:
                                        is True):
             await page.route("**/*", self.route_interceptor.route_intercept)
 
-        status_code = -1
+        status_code = 500
         exception_list = []
 
         # 2.2 going to url
