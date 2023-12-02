@@ -24,8 +24,8 @@ class PlaywrightResponse:
 
     def __str__(self):
         """common magic method for str"""
-        text_ok = f"<{self.status_code} OK>🟢"
-        text_error = f"<{self.status_code} ERROR>🔴"
+        text_ok = f"<{self.status_code} OK> 🟢"
+        text_error = f"<{self.status_code} ERROR> 🔴 {self.error_list}"
         text = text_ok if (self.html and not self.error_list
                            and not self.exception_list) else text_error
         return text
