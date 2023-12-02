@@ -54,7 +54,8 @@ class PlaywrightRequest:
                  timeout_ms: int = 15000,
                  error_page_detectors: list[ErrorPageDetector] or None = None,
                  extra_async_function_ptr: Callable[[Page], Any]
-                 or None = None):
+                 or None = None,
+                 extra_kwargs: dict or None = None):
         """constructor
 
         :param browser: the browser type FIREFOX, CHROMIUM, WEBKIT
@@ -67,6 +68,7 @@ class PlaywrightRequest:
         :param timeout_ms: the number of milliseconds to wait when waiting for the function `wait_for_load_state`
         :param error_page_detectors: the list of objects able to detect error pages
         :param extra_async_function_ptr: additional async function used to compute extra response data
+        :param extra_kwargs: extra parameters passed to `extra_async_function_ptr` besides `Page`
         """
         self.browser_type: BrowserType = browser
         self.headless: bool = headless
@@ -79,6 +81,7 @@ class PlaywrightRequest:
         self.error_page_detectors: list[
             ErrorPageDetector] = error_page_detectors
         self.extra_async_function_ptr = extra_async_function_ptr
+        self.extra_kwargs = extra_kwargs if extra_kwargs is not None else {}
 
         self.urls: list[str] = []
         self.responses: list[PlaywrightResponse] = []
@@ -86,13 +89,13 @@ class PlaywrightRequest:
         self.status_codes: list[int] = []
         self.elapsed_time: float = 0.0
 
-    async def extra_function(self, page: Page or None) -> Any:
+    async def extra_function(self, page: Page or None, **kwargs) -> Any:
         """define a function to operate the page before close
         useful when inherit this class and do operation over the page
         like click on elements etc...
         """
         if self.extra_async_function_ptr:
-            return await self.extra_async_function_ptr(page=page)
+            return await self.extra_async_function_ptr(page=page, **kwargs)
         log_message(
             f"default extra_function that does nothing with page={page}")
         return None
@@ -180,7 +183,7 @@ class PlaywrightRequest:
         try:
             response = await page.goto(url=url, timeout=self.timeout_ms)
             status_code = response.status
-            ok_str = f"{status_code}-OK✅" if response.ok else f"{status_code}-🔴"
+            ok_str = f"First {status_code}-OK" if response.ok else f"{status_code}"
             log_message(f"Response: {status_code}, {ok_str}", "info")
         except Exception as error:
             exception_list.append(str(error))
@@ -219,14 +222,15 @@ class PlaywrightRequest:
         # 4. get the html content
         original_html = await page.content()
         html = original_html
-        error_list = []
+        total_error_list = []
+        error_flag = False
 
         # 5. detect errors if provided
         if self.error_page_detectors:
-            error_flag = False
             for error_detector in self.error_page_detectors:
                 error_list = error_detector.detect_errors(html)
                 if error_list:
+                    total_error_list += error_list
                     error_flag = True
                     log_message(
                         f"'{error_detector.__class__.__name__}' detects the following errors:",
@@ -235,7 +239,8 @@ class PlaywrightRequest:
             html = "" if error_flag else html
 
         # if implemented, operate over the page
-        extra_result = await self.extra_function(page=page)
+        extra_result = await self.extra_function(page=page,
+                                                 **self.extra_kwargs)
 
         await page.close()
 
@@ -243,5 +248,5 @@ class PlaywrightRequest:
                                   html=html,
                                   status_code=status_code,
                                   exception_list=exception_list,
-                                  error_list=error_list,
+                                  error_list=total_error_list,
                                   extra_result=extra_result)

@@ -62,8 +62,8 @@ def test_playwright_request_constructor():
     assert not requester.elapsed_time
 
 
-async def extra_func(page: Page) -> str:
-    return "hello world" if page is not None else "hello"
+async def extra_func(page: Page, name: str, value: float) -> str:
+    return f"hello world {name}:{value}" if page is not None else "hello"
 
 
 async def test_playwright_request_extra_function():
@@ -74,9 +74,13 @@ async def test_playwright_request_extra_function():
     assert res is None
 
     # 2. test extra func
-    requester = PlaywrightRequest(extra_async_function_ptr=extra_func)
-    res = await requester.extra_function(page=True)
-    assert res == "hello world"
+    requester = PlaywrightRequest(extra_async_function_ptr=extra_func,
+                                  extra_kwargs={
+                                      "name": "pi",
+                                      "value": 3.1416
+                                  })
+    res = await requester.extra_function(page=True, **requester.extra_kwargs)
+    assert res == "hello world pi:3.1416"
 
 
 def test_str_magic_method():
@@ -173,7 +177,7 @@ def test_goto_and_wait_for_load_state_raises(mock_goto,
                                   await_for_load_state=True)
     # 1.3 get the responses
     responses = requester.get(urls=[GOOD_URL])
-    assert responses[0].status_code == -1
+    assert responses[0].status_code == 500
     assert responses[0].exception_list
     assert len(
         responses[0].exception_list
