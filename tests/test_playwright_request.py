@@ -120,6 +120,25 @@ def test_request():
         assert res[0].status_code > 0
 
 
+def test_request_with_delay_before_goto():
+    """testing the request method with delay before goto"""
+    # 1.1 define an interceptor to speed up the request (avoiding images)
+    interceptor = RouteInterceptor().set_default_exclusions().block_on()
+    # 1.2 define the requester
+    requester = PlaywrightRequest(browser=BrowserType.FIREFOX,
+                                  headless=HEADLESS,
+                                  route_interceptor=interceptor,
+                                  random_delay_before_goto=(0.161, 0.314))
+    # 1.3 get the responses
+    responses = requester.get(urls=[GOOD_URL])
+    # 1.4 test the results
+    assert isinstance(responses, list)
+    assert len(responses) == 1
+    assert isinstance(responses[0], PlaywrightResponse)
+    assert responses[0].status_code > 0
+    assert responses[0].html
+
+
 def new_page_exception():
     """raise an exception when new_page is called"""
     raise ValueError("Exception: general mock exception for playwright")

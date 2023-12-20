@@ -1,6 +1,8 @@
 """playwright request file"""
 import asyncio
+import logging
 import time
+import random
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -52,6 +54,7 @@ class PlaywrightRequest:
                  await_for_doom: bool = False,
                  await_for_load_state: bool = False,
                  timeout_ms: int = 15000,
+                 random_delay_before_goto: tuple[float, float] or None = None,
                  error_page_detectors: list[ErrorPageDetector] or None = None,
                  extra_async_function_ptr: Callable[[Page], Any]
                  or None = None,
@@ -66,6 +69,7 @@ class PlaywrightRequest:
         :param await_for_doom: await for doom-content while loading state
         :param await_for_load_state: flag to wait for load_state while loading state
         :param timeout_ms: the number of milliseconds to wait when waiting for the function `wait_for_load_state`
+        :param random_delay_before_goto: random interval, in seconds,  to wait before execute goto function
         :param error_page_detectors: the list of objects able to detect error pages
         :param extra_async_function_ptr: additional async function used to compute extra response data
         :param extra_kwargs: extra parameters passed to `extra_async_function_ptr` besides `Page`
@@ -78,6 +82,8 @@ class PlaywrightRequest:
         self.await_for_doom: bool = await_for_doom
         self.await_for_load_state: bool = await_for_load_state
         self.timeout_ms: int = timeout_ms
+        self.random_delay_before_goto: tuple[int,
+                                             int] = random_delay_before_goto
         self.error_page_detectors: list[
             ErrorPageDetector] = error_page_detectors
         self.extra_async_function_ptr = extra_async_function_ptr
@@ -178,6 +184,14 @@ class PlaywrightRequest:
 
         status_code = 500
         exception_list = []
+
+        # wait a random interval before goto
+        if self.random_delay_before_goto:
+            random_interval = self.random_delay_before_goto
+            rnd = int(random.uniform(*random_interval) * 1000)
+            msg = f"waiting {rnd} ms before goto '{url}'"
+            logging.info(msg)
+            await page.wait_for_timeout(timeout=rnd)
 
         # 2.2 going to url
         try:

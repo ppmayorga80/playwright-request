@@ -17,7 +17,6 @@ if [[ ! -f .env ]]; then
 fi
 
 pip install --upgrade pip
-pip install pipenv
 pip install -r requirements.txt
 
 #extra packages to install
