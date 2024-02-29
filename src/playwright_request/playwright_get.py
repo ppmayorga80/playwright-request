@@ -1,11 +1,10 @@
-"""playwright request file"""
-import asyncio
+"""playwright get file"""
 import logging
 import time
 import random
 from typing import Any, Callable
 
-from playwright.async_api import async_playwright, Page
+from playwright.sync_api import sync_playwright, Page
 
 from playwright_request.browser_type import BrowserType
 from playwright_request.error_page_detector import ErrorPageDetector
@@ -14,7 +13,7 @@ from playwright_request.utils.log_message import log_message
 from playwright_request.playwright_response import PlaywrightResponse
 
 
-class PlaywrightRequest:
+class PlaywrightGet:
     """class to implement request with playwright"""
 
     def __init__(self,
@@ -28,8 +27,7 @@ class PlaywrightRequest:
                  timeout_ms: int = 15000,
                  random_delay_before_goto: tuple[float, float] or None = None,
                  error_page_detectors: list[ErrorPageDetector] or None = None,
-                 extra_async_function_ptr: Callable[[Page], Any]
-                 or None = None,
+                 extra_function_ptr: Callable[[Page], Any] or None = None,
                  extra_kwargs: dict or None = None):
         """constructor
 
@@ -43,7 +41,7 @@ class PlaywrightRequest:
         :param timeout_ms: the number of milliseconds to wait when waiting for the function `wait_for_load_state`
         :param random_delay_before_goto: random interval, in seconds,  to wait before execute goto function
         :param error_page_detectors: the list of objects able to detect error pages
-        :param extra_async_function_ptr: additional async function used to compute extra response data
+        :param extra_function_ptr: additional async function used to compute extra response data
         :param extra_kwargs: extra parameters passed to `extra_async_function_ptr` besides `Page`
         """
         self.browser_type: BrowserType = browser
@@ -58,22 +56,22 @@ class PlaywrightRequest:
                                              int] = random_delay_before_goto
         self.error_page_detectors: list[
             ErrorPageDetector] = error_page_detectors
-        self.extra_async_function_ptr = extra_async_function_ptr
+        self.extra_function_ptr = extra_function_ptr
         self.extra_kwargs = extra_kwargs if extra_kwargs is not None else {}
 
-        self.urls: list[str] = []
-        self.responses: list[PlaywrightResponse] = []
-        self.htmls: list[str] = []
-        self.status_codes: list[int] = []
+        self.url: str = ""
+        self.response: PlaywrightResponse or None = None
+        self.html: str = ""
+        self.status_code: int = 0
         self.elapsed_time: float = 0.0
 
-    async def extra_function(self, page: Page or None, **kwargs) -> Any:
+    def extra_function(self, page: Page or None, **kwargs) -> Any:
         """define a function to operate the page before close
         useful when inherit this class and do operation over the page
         like click on elements etc...
         """
-        if self.extra_async_function_ptr:
-            return await self.extra_async_function_ptr(page=page, **kwargs)
+        if self.extra_function_ptr:
+            return self.extra_function_ptr(page=page, **kwargs)
         log_message(
             f"default extra_function that does nothing with page={page}")
         return None
@@ -81,54 +79,47 @@ class PlaywrightRequest:
     def __str__(self):
         """message class"""
         lines = [
-            f"#URLS: {len(self.urls)}",
-            f"STATUSES: {self.status_codes}",
+            f"#URL: {self.url}",
+            f"STATUS_CODE: {self.status_code}",
             f"ELAPSED: {self.elapsed_time} sec",
         ]
         return "\n".join(lines)
 
-    def get(self, urls: list[str]) -> list[PlaywrightResponse]:
+    def get(self, url: str) -> PlaywrightResponse:
         """request operations over the urls"""
-        self.urls = urls
+        self.url = url
         starting_time = time.perf_counter()
-        responses = asyncio.run(self._get_many(urls=urls))
+        response: PlaywrightResponse = self._get(url=url)
 
-        self.responses = responses
-        self.htmls = [x.html for x in responses]
-        self.status_codes = [x.status_code for x in responses]
+        self.response = response
+        self.html = response.html
+        self.status_code = response.status_code
 
         ending_time = time.perf_counter()
         self.elapsed_time = ending_time - starting_time
-        return self.responses
+        return response
 
-    async def _get_many(self, urls: list[str]) -> list[PlaywrightResponse]:
+    def _get(self, url: str) -> PlaywrightResponse:
         """request many urls asynchronously"""
-        async with async_playwright() as p:
+        with sync_playwright() as p:
             if self.browser_type == BrowserType.FIREFOX:
-                browser = await p.firefox.launch(headless=self.headless,
-                                                 proxy=self.proxy)
+                browser = p.firefox.launch(headless=self.headless,
+                                           proxy=self.proxy)
             elif self.browser_type == BrowserType.CHROMIUM:
-                browser = await p.chromium.launch(headless=self.headless,
-                                                  proxy=self.proxy)
+                browser = p.chromium.launch(headless=self.headless,
+                                            proxy=self.proxy)
             elif self.browser_type == BrowserType.WEBKIT:
-                browser = await p.webkit.launch(headless=self.headless,
-                                                proxy=self.proxy)
+                browser = p.webkit.launch(headless=self.headless,
+                                          proxy=self.proxy)
 
-            context = await browser.new_context()
-            tasks = [
-                asyncio.ensure_future(self._get_one(context=context, url=url))
-                for url in urls
-            ]
-            raw_responses = await asyncio.gather(*tasks,
-                                                 return_exceptions=True)
-            responses = [
-                x if isinstance(x, PlaywrightResponse) else
-                PlaywrightResponse.exception_response() for x in raw_responses
-            ]
+            context = browser.new_context()
+            raw_response = self._get_one(context=context, url=url)
+            response = raw_response if isinstance(
+                raw_response, PlaywrightResponse
+            ) else PlaywrightResponse.exception_response()
+            return response
 
-            return responses
-
-    async def _get_one(self, context, url) -> PlaywrightResponse:
+    def _get_one(self, context, url) -> PlaywrightResponse:
         """request one html from url by using the context object
         and returns a tuple with:
             original html
@@ -139,7 +130,7 @@ class PlaywrightRequest:
 
         # 1. open a new page
         try:
-            page: Page = await context.new_page()
+            page: Page = context.new_page()
         except Exception as error:
             log_message(f"Exception at `new_page()` for '{url}': {error}",
                         "error")
@@ -152,7 +143,7 @@ class PlaywrightRequest:
         # 2.1 configure a route interceptor
         if self.route_interceptor and (self.route_interceptor.block_resources
                                        is True):
-            await page.route("**/*", self.route_interceptor.route_intercept)
+            page.route("**/*", self.route_interceptor.route_intercept)
 
         status_code = 500
         exception_list = []
@@ -163,11 +154,11 @@ class PlaywrightRequest:
             rnd = int(random.uniform(*random_interval) * 1000)
             msg = f"waiting {rnd} ms before goto '{url}'"
             logging.info(msg)
-            await page.wait_for_timeout(timeout=rnd)
+            page.wait_for_timeout(timeout=rnd)
 
         # 2.2 going to url
         try:
-            response = await page.goto(url=url, timeout=self.timeout_ms)
+            response = page.goto(url=url, timeout=self.timeout_ms)
             status_code = response.status
             ok_str = f"First {status_code}-OK" if response.ok else f"{status_code}"
             log_message(f"Response: {status_code}, {ok_str}", "info")
@@ -175,11 +166,11 @@ class PlaywrightRequest:
             exception_list.append(str(error))
             log_message(f"Error `goto()` at '{url}': {error}", "error")
 
-        # 3. wait until the page is loaded if necessary
+        # 3. waits until the page is loaded if necessary
         if self.await_for_networkidle:
             try:
-                await page.wait_for_load_state(state='networkidle',
-                                               timeout=self.timeout_ms)
+                page.wait_for_load_state(state='networkidle',
+                                         timeout=self.timeout_ms)
             except Exception as error:
                 exception_list.append(str(error))
                 log_message(
@@ -188,8 +179,8 @@ class PlaywrightRequest:
 
         if self.await_for_doom:
             try:
-                await page.wait_for_load_state('domcontentloaded',
-                                               timeout=self.timeout_ms)
+                page.wait_for_load_state('domcontentloaded',
+                                         timeout=self.timeout_ms)
             except Exception as error:
                 exception_list.append(str(error))
                 log_message(
@@ -198,7 +189,7 @@ class PlaywrightRequest:
 
         if self.await_for_load_state:
             try:
-                await page.wait_for_load_state(timeout=self.timeout_ms)
+                page.wait_for_load_state(timeout=self.timeout_ms)
             except Exception as error:
                 exception_list.append(str(error))
                 log_message(
@@ -206,7 +197,7 @@ class PlaywrightRequest:
                     "error")
 
         # 4. get the html content
-        original_html = await page.content()
+        original_html = page.content()
         html = original_html
         total_error_list = []
         error_flag = False
@@ -225,10 +216,9 @@ class PlaywrightRequest:
             html = "" if error_flag else html
 
         # if implemented, operate over the page
-        extra_result = await self.extra_function(page=page,
-                                                 **self.extra_kwargs)
+        extra_result = self.extra_function(page=page, **self.extra_kwargs)
 
-        await page.close()
+        page.close()
 
         return PlaywrightResponse(content=original_html,
                                   html=html,
