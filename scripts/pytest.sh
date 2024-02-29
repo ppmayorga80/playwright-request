@@ -11,7 +11,7 @@ export PYTHONPATH="$PWD/src"
 export HEADLESS="True"
 
 #1. set the test coverage value and other shell variables
-COVERAGE_THRESHOLD="80"
+COVERAGE_THRESHOLD="81"
 PROJECT_DIR="src"
 TEST_DIR="tests"
 
